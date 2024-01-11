@@ -11,7 +11,7 @@
 Summary:    A GNU tool for automatically creating Makefiles
 Name:       automake
 Version:    %{api_version}.1
-Release:    7%{?dist}
+Release:    8%{?dist}
 
 # docs ~> GFDL, sources ~> GPLv2+, mkinstalldirs ~> PD and install-sh ~> MIT
 License:    GPLv2+ and GFDL and Public Domain and MIT
@@ -32,6 +32,10 @@ Patch0:     automake-1.15-disable-vala-tests.patch
 # http://git.savannah.gnu.org/cgit/automake.git/commit/?id=a348d830659fffd2cfc42994524783b07e69b4b5
 Patch1:     automake-1.16-pep3147-tweak-fix.patch
 
+# BZ#2209821
+# Backport fixes for automake bugs 44239 and 53530
+Patch2:     automake-1.16.1-python-version-multiple-digits.patch
+Patch3:     0001-python-add-3.10-3.15-to-the-version-search-list.patch
 
 URL:        http://www.gnu.org/software/automake/
 Requires:   autoconf >= 2.65
@@ -128,6 +132,9 @@ make -k %{?_smp_mflags} check %{?TESTS_FLAGS: TESTS="%{TESTS_FLAGS}"} \
 
 
 %changelog
+* Wed Jun 28 2023 Frederic Berat <fberat@redhat.com> - 1.16.1-8
+- Fix support for detection of python 3.1x (RHBZ#2209821)
+
 * Tue May 05 2020 Patrik Novotný <panovotn@redhat.com> - 1.16.1-7
 - Upstream patch fixing automake bug#31222
 
