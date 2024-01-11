@@ -15,7 +15,7 @@ Summary:    A GNU tool for automatically creating Makefiles
 Name:       automake
 # Any bump here requires libtool rebuild, rhbz#1813010
 Version:    %{api_version}.2
-Release:    6%{?dist}
+Release:    8%{?dist}
 
 # docs ~> GFDL, sources ~> GPLv2+, mkinstalldirs ~> PD and install-sh ~> MIT
 License:    GPLv2+ and GFDL and Public Domain and MIT
@@ -33,6 +33,19 @@ Patch0:     automake-1.15-disable-vala-tests.patch
 # Taken from upstream commit (NEWS hunks removed due to conflicts)
 # https://debbugs.gnu.org/cgi/bugreport.cgi?bug=44239
 Patch1:     automake-1.16.2-python-version-multiple-digits.patch
+
+# Backport 7e50be6bce6b662d27e3049170282aaddaaee791
+# tests: use testsuite/ directory in DejaGnu tests
+# Stripped from NEWS/THANKS changes
+# Fixes: RHBZ#2215991
+Patch2:     0001-tests-use-testsuite-directory-in-DejaGnu-tests.patch
+
+# Backport 930a9a73f4bb776ec334eff4cf6e182802841daa
+# Stripped from NEWS updates.
+# Ensures python 3.1x can be found even if it is not the default system
+# interpreter.
+# See RHBZ#2210304
+Patch3:     0001-python-add-3.10-3.15-to-the-version-search-list.patch
 
 URL:        http://www.gnu.org/software/automake/
 Requires:   autoconf >= 2.65
@@ -142,6 +155,14 @@ make -k %{?_smp_mflags} check %{?TESTS_FLAGS: TESTS="%{TESTS_FLAGS}"} \
 
 
 %changelog
+* Fri Jun 23 2023 Frederic Berat <fberat@redhat.com> - 1.16.2-8
+- Backport python: add 3.10 - 3.15 to the version search list
+- Fixes: RHBZ#2210304
+
+* Wed Jun 21 2023 Frederic Berat <fberat@redhat.com> - 1.16.2-7
+- Backport: tests: use testsuite/ directory in DejaGnu tests
+- Fixes: RHBZ#2215991
+
 * Mon Aug 09 2021 Mohan Boddu <mboddu@redhat.com> - 1.16.2-6
 - Rebuilt for IMA sigs, glibc 2.34, aarch64 flags
   Related: rhbz#1991688

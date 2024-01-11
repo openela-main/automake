@@ -1,0 +1,799 @@
+From 7e50be6bce6b662d27e3049170282aaddaaee791 Mon Sep 17 00:00:00 2001
+From: Jacob Bachmeyer <jcb@gnu.org>
+Date: Wed, 14 Jul 2021 20:21:49 -0700
+Subject: [PATCH] tests: use testsuite/ directory in DejaGnu tests
+
+Patch posted:
+https://lists.gnu.org/archive/html/automake-patches/2021-07/msg00009.html
+
+* t/check12.sh: Consistently use the directory name, testsuite/,
+for all DejaGnu tests, and always use recursive make to run
+DejaGnu, for backward and forward compatibility.
+* t/dejagnu3.sh: Likewise.
+* t/dejagnu4.sh: Likewise.
+* t/dejagnu5.sh: Likewise.
+* t/dejagnu6.sh: Likewise.
+* t/dejagnu7.sh: Likewise.
+* t/dejagnu-absolute-builddir.sh: Likewise.
+* t/dejagnu-relative-srcdir.sh: Likewise.
+* t/dejagnu-siteexp-extend.sh: Likewise.
+* t/dejagnu-siteexp-useredit.sh: Likewise.
+* NEWS: mention this.
+* THANKS: new contributor.
+---
+ NEWS                           |   3 +
+ THANKS                         |   1 +
+ t/check12.sh                   |  62 +++++++++++---------
+ t/dejagnu-absolute-builddir.sh |  19 +++++--
+ t/dejagnu-relative-srcdir.sh   |  32 +++++++----
+ t/dejagnu-siteexp-extend.sh    | 101 ++++++++++++++++++---------------
+ t/dejagnu-siteexp-useredit.sh  |  31 ++++++----
+ t/dejagnu3.sh                  |  20 +++++--
+ t/dejagnu4.sh                  |  39 ++++++++-----
+ t/dejagnu5.sh                  |  20 +++++--
+ t/dejagnu6.sh                  |  19 +++++--
+ t/dejagnu7.sh                  |  19 +++++--
+ 12 files changed, 222 insertions(+), 144 deletions(-)
+
+diff --git a/t/check12.sh b/t/check12.sh
+index 31cb4f711..e1621840e 100644
+--- a/t/check12.sh
++++ b/t/check12.sh
+@@ -22,6 +22,7 @@ required=runtest
+ . test-init.sh
+ 
+ cat >> configure.ac << 'END'
++AC_CONFIG_FILES([testsuite/Makefile])
+ AC_OUTPUT
+ END
+ 
+@@ -56,12 +57,17 @@ B_EXIT_STATUS=0; export B_EXIT_STATUS
+ ## DejaGnu tests.
+ 
+ cat >> Makefile.am << 'END'
+-AUTOMAKE_OPTIONS += dejagnu
++SUBDIRS = testsuite
++EXTRA_DIST += hammer spanner
++END
++
++mkdir testsuite
++
++cat >> testsuite/Makefile.am << 'END'
++AUTOMAKE_OPTIONS = dejagnu
+ DEJATOOL = hammer spanner
+-AM_RUNTESTFLAGS = HAMMER=$(srcdir)/hammer SPANNER=$(srcdir)/spanner
+-EXTRA_DIST += $(DEJATOOL)
+-EXTRA_DIST += hammer.test/hammer.exp
+-EXTRA_DIST += spanner.test/spanner.exp
++AM_RUNTESTFLAGS = HAMMER=$(top_srcdir)/hammer SPANNER=$(top_srcdir)/spanner
++EXTRA_DIST = hammer.test/hammer.exp spanner.test/spanner.exp
+ END
+ 
+ cat > hammer << 'END'
+@@ -77,9 +83,9 @@ echo "I'm a right spanner!"
+ END
+ chmod +x hammer spanner
+ 
+-mkdir hammer.test spanner.test
++mkdir testsuite/hammer.test testsuite/spanner.test
+ 
+-cat > hammer.test/hammer.exp << 'END'
++cat > testsuite/hammer.test/hammer.exp << 'END'
+ set test test_hammer
+ spawn $HAMMER
+ expect {
+@@ -88,7 +94,7 @@ expect {
+ }
+ END
+ 
+-cat > spanner.test/spanner.exp << 'END'
++cat > testsuite/spanner.test/spanner.exp << 'END'
+ set test test_spanner
+ spawn $SPANNER
+ expect {
+@@ -133,10 +139,10 @@ for vpath in : false; do
+   $srcdir/configure
+ 
+   $MAKE check
+-  test -f hammer.log
+-  test -f hammer.sum
+-  test -f spanner.log
+-  test -f spanner.sum
++  test -f testsuite/hammer.log
++  test -f testsuite/hammer.sum
++  test -f testsuite/spanner.log
++  test -f testsuite/spanner.sum
+   if test x"$am_serial_tests" != x"yes"; then
+     test -f test-suite.log
+     test -f a.log
+@@ -147,10 +153,10 @@ for vpath in : false; do
+   cp -f config.status config-status.sav
+ 
+   $MAKE distclean
+-  test ! -e hammer.log
+-  test ! -e hammer.sum
+-  test ! -e spanner.log
+-  test ! -e spanner.sum
++  test ! -e testsuite/hammer.log
++  test ! -e testsuite/hammer.sum
++  test ! -e testsuite/spanner.log
++  test ! -e testsuite/spanner.sum
+   test ! -e test-suite.log
+   test ! -e a.log
+   test ! -e b.log
+@@ -160,12 +166,12 @@ for vpath in : false; do
+   ./config.status
+ 
+   NAIL=screw $MAKE check && exit 1
+-  test -f hammer.log
+-  test -f hammer.sum
+-  test -f spanner.log
+-  test -f spanner.sum
+-  grep 'FAIL: test_hammer' hammer.sum
+-  grep 'FAIL:' spanner.sum && exit 1
++  test -f testsuite/hammer.log
++  test -f testsuite/hammer.sum
++  test -f testsuite/spanner.log
++  test -f testsuite/spanner.sum
++  grep 'FAIL: test_hammer' testsuite/hammer.sum
++  grep 'FAIL:' testsuite/spanner.sum && exit 1
+ 
+   B_EXIT_STATUS=1 $MAKE check && exit 1
+   if test x"$am_serial_tests" != x"yes"; then
+@@ -185,12 +191,12 @@ for vpath in : false; do
+ 
+   # Do not trust the exit status of 'make -k'.
+   NAIL=screw B_EXIT_STATUS=23 CHECKLOCAL_EXIT_STATUS=1 $MAKE -k check || :
+-  test -f hammer.log
+-  test -f hammer.sum
+-  test -f spanner.log
+-  test -f spanner.sum
+-  grep 'FAIL: test_hammer' hammer.sum
+-  grep 'FAIL:' spanner.sum && exit 1
++  test -f testsuite/hammer.log
++  test -f testsuite/hammer.sum
++  test -f testsuite/spanner.log
++  test -f testsuite/spanner.sum
++  grep 'FAIL: test_hammer' testsuite/hammer.sum
++  grep 'FAIL:' testsuite/spanner.sum && exit 1
+   if test x"$am_serial_tests" != x"yes"; then
+     cat test-suite.log
+     cat a.log
+diff --git a/t/dejagnu-absolute-builddir.sh b/t/dejagnu-absolute-builddir.sh
+index ac938a44c..0bddb8e3e 100644
+--- a/t/dejagnu-absolute-builddir.sh
++++ b/t/dejagnu-absolute-builddir.sh
+@@ -21,18 +21,25 @@ required=runtest
+ . test-init.sh
+ 
+ cat >> configure.ac << 'END'
++AC_CONFIG_FILES([testsuite/Makefile])
+ AC_OUTPUT
+ END
+ 
+ cat > Makefile.am << 'END'
++SUBDIRS = testsuite
++END
++
++mkdir testsuite
++
++cat > testsuite/Makefile.am << 'END'
+ AUTOMAKE_OPTIONS = dejagnu
+ DEJATOOL = tcl env
+ EXTRA_DIST = tcl.test/tcl.exp
+ END
+ 
+-mkdir tcl.test
++mkdir testsuite/tcl.test
+ 
+-cat > tcl.test/tcl.exp << 'END'
++cat > testsuite/tcl.test/tcl.exp << 'END'
+ send_user "tcl_objdir: $objdir\n"
+ if { [ regexp "^/" $objdir ] } {
+     pass "test_tcl_objdir"
+@@ -50,10 +57,10 @@ $AUTOMAKE --add-missing
+ $MAKE check
+ 
+ # Sanity check: all tests have run.
+-test -f env.log
+-test -f env.sum
+-test -f tcl.log
+-test -f tcl.sum
++test -f testsuite/env.log
++test -f testsuite/env.sum
++test -f testsuite/tcl.log
++test -f testsuite/tcl.sum
+ 
+ $MAKE distcheck
+ 
+diff --git a/t/dejagnu-relative-srcdir.sh b/t/dejagnu-relative-srcdir.sh
+index 1225a1941..6bab70b12 100644
+--- a/t/dejagnu-relative-srcdir.sh
++++ b/t/dejagnu-relative-srcdir.sh
+@@ -21,44 +21,52 @@ required=runtest
+ . test-init.sh
+ 
+ cat >> configure.ac << 'END'
++AC_CONFIG_FILES([testsuite/Makefile])
+ AC_OUTPUT
+ END
+ 
+ cat > Makefile.am << 'END'
++SUBDIRS = testsuite
++END
++
++mkdir testsuite
++
++cat > testsuite/Makefile.am << 'END'
+ AUTOMAKE_OPTIONS = dejagnu
+ DEJATOOL = tcl env
+-EXTRA_DIST = env.test/env.exp tcl.test/tcl.exp lib/tcl.exp
++EXTRA_DIST  = env.test/env.exp tcl.test/tcl.exp
++EXTRA_DIST += lib/tcl.exp
+ END
+ 
+-mkdir env.test tcl.test lib
++mkdir testsuite/env.test testsuite/tcl.test testsuite/lib
+ 
+ # DejaGnu can change $srcdir behind our backs, so we have to
+ # save its original value.  Thanks to Ian Lance Taylor for the
+ # suggestion.
+-cat > lib/tcl.exp << 'END'
++cat > testsuite/lib/tcl.exp << 'END'
+ send_user "tcl_lib_srcdir: $srcdir\n"
+ set orig_srcdir $srcdir
+ END
+ 
+-cat > env.test/env.exp << 'END'
++cat > testsuite/env.test/env.exp << 'END'
+ set env_srcdir $env(srcdir)
+ send_user "env_srcdir: $env_srcdir\n"
+-if { [ regexp "^\.(\./\.\.)?$" $env_srcdir ] } {
++if { [ regexp {^\.(\./\.\./\.\./testsuite)?$} $env_srcdir ] } {
+     pass "test_env_src"
+ } else {
+     fail "test_env_src"
+ }
+ END
+ 
+-cat > tcl.test/tcl.exp << 'END'
++cat > testsuite/tcl.test/tcl.exp << 'END'
+ send_user "tcl_srcdir: $srcdir\n"
+-if { [ regexp "^\.(\./\.\.)?$" $srcdir ] } {
++if { [ regexp {^\.(\./\.\./\.\./testsuite)?$} $srcdir ] } {
+     pass "test_tcl_src"
+ } else {
+     fail "test_tcl_src"
+ }
+ send_user "tcl_orig_srcdir: $orig_srcdir\n"
+-if { [ regexp "^\.(\./\.\.)?$" $orig_srcdir ] } {
++if { [ regexp "^\.(\./\.\./\.\./testsuite)?$" $orig_srcdir ] } {
+     pass "test_tcl_orig_src"
+ } else {
+     fail "test_tcl_orig_src"
+@@ -74,10 +82,10 @@ $AUTOMAKE --add-missing
+ $MAKE check
+ 
+ # Sanity check: all tests have run.
+-test -f env.log
+-test -f env.sum
+-test -f tcl.log
+-test -f tcl.sum
++test -f testsuite/env.log
++test -f testsuite/env.sum
++test -f testsuite/tcl.log
++test -f testsuite/tcl.sum
+ 
+ $MAKE distcheck
+ 
+diff --git a/t/dejagnu-siteexp-extend.sh b/t/dejagnu-siteexp-extend.sh
+index fb17d9d24..67e58c752 100644
+--- a/t/dejagnu-siteexp-extend.sh
++++ b/t/dejagnu-siteexp-extend.sh
+@@ -33,10 +33,17 @@ END
+ }
+ 
+ cat >> configure.ac << 'END'
++AC_CONFIG_FILES([testsuite/Makefile])
+ AC_OUTPUT
+ END
+ 
+ cat > Makefile.am << 'END'
++SUBDIRS = testsuite
++END
++
++mkdir testsuite
++
++cat > testsuite/Makefile.am << 'END'
+ AUTOMAKE_OPTIONS = dejagnu
+ DEJATOOL = tool
+ 
+@@ -46,11 +53,11 @@ EXTRA_DEJAGNU_SITE_CONFIG = foo.exp
+ EXTRA_DIST += foo.exp
+ END
+ 
+-echo 'set foo "/foo/"' > foo.exp
++echo 'set foo "/foo/"' > testsuite/foo.exp
+ 
+-mkdir tool.test
+-write_check_for foo > tool.test/tool.exp
+-cat tool.test/tool.exp
++mkdir testsuite/tool.test
++write_check_for foo > testsuite/tool.test/tool.exp
++cat testsuite/tool.test/tool.exp
+ 
+ $ACLOCAL
+ $AUTOCONF
+@@ -59,31 +66,31 @@ $AUTOMAKE --add-missing
+ ./configure
+ 
+ $MAKE check
+-cat foo.exp
+-cat site.exp
+-grep 'PASS: test_foo' tool.sum
++cat testsuite/foo.exp
++cat testsuite/site.exp
++grep 'PASS: test_foo' testsuite/tool.sum
+ 
+-write_check_for bar >> tool.test/tool.exp
+-write_check_for baz >> tool.test/tool.exp
+-cat tool.test/tool.exp
++write_check_for bar >> testsuite/tool.test/tool.exp
++write_check_for baz >> testsuite/tool.test/tool.exp
++cat testsuite/tool.test/tool.exp
+ 
+ # Ensure that foo.exp will be newer than site.exp, which will
+ # thus have to be remade.
+ $sleep
+ # With this, below we'll also check that settings in files coming later in
+ # $(EXTRA_DEJAGNU_SITE_CONFIG) override those in files coming earlier.
+-cat >> foo.exp <<'END'
++cat >> testsuite/foo.exp <<'END'
+ set bar "/foo/"
+ set baz "/foo/"
+ set qux "/foo/"
+ END
+ 
+-$MAKE check && { cat site.exp; exit 1; }
+-grep 'PASS: test_foo' tool.sum
+-grep 'FAIL: test_bar' tool.sum
+-grep 'FAIL: test_baz' tool.sum
++$MAKE check && { cat testsuite/site.exp; exit 1; }
++grep 'PASS: test_foo' testsuite/tool.sum
++grep 'FAIL: test_bar' testsuite/tool.sum
++grep 'FAIL: test_baz' testsuite/tool.sum
+ 
+-cat >> Makefile.am << 'END'
++cat >> testsuite/Makefile.am << 'END'
+ EXTRA_DEJAGNU_SITE_CONFIG += bar bar.dir/bar
+ EXTRA_DIST += bar
+ DISTCLEANFILES = bar.dir/bar
+@@ -92,41 +99,41 @@ bar.dir/bar:
+ 	echo 'set baz "/baz/"' > $@
+ END
+ 
+-echo 'set bar "/bar/"' > bar
++echo 'set bar "/bar/"' > testsuite/bar
+ # This will allow us to check one more time that settings in files
+ # coming later in $(EXTRA_DEJAGNU_SITE_CONFIG) override those in
+ # files coming earlier.
+-echo 'set baz "/xyz/"' >> bar
++echo 'set baz "/xyz/"' >> testsuite/bar
+ 
+ # Ensure that the Makefile will be newer than site.exp, which will
+ # thus have to be remade.
+ $sleep
+-$AUTOMAKE Makefile
+-./config.status Makefile
+-
+-$MAKE check || { cat site.exp; exit 1; }
+-cat site.exp
+-cat bar.dir/bar
+-$FGREP '/bar/' site.exp
+-$FGREP '/baz/' site.exp
+-grep 'PASS: test_foo' tool.sum
+-grep 'PASS: test_bar' tool.sum
+-grep 'PASS: test_baz' tool.sum
++$AUTOMAKE testsuite/Makefile
++./config.status testsuite/Makefile
++
++$MAKE check || { cat testsuite/site.exp; exit 1; }
++cat testsuite/site.exp
++cat testsuite/bar.dir/bar
++$FGREP '/bar/' testsuite/site.exp
++$FGREP '/baz/' testsuite/site.exp
++grep 'PASS: test_foo' testsuite/tool.sum
++grep 'PASS: test_bar' testsuite/tool.sum
++grep 'PASS: test_baz' testsuite/tool.sum
+ 
+ # Check that the features we're testing behave well in VPATH builds.
+ $MAKE distcheck
+ 
+ # Check that the user can edit the site.exp file, and that his edits
+ # are retained.
+-write_check_for zardoz >> tool.test/tool.exp
+-cat tool.test/tool.exp
+-echo 'set zardoz "/zardoz/"' >> site.exp
++write_check_for zardoz >> testsuite/tool.test/tool.exp
++cat testsuite/tool.test/tool.exp
++echo 'set zardoz "/zardoz/"' >> testsuite/site.exp
+ 
+ $MAKE check
+-cat site.exp
+-grep 'PASS: test_zardoz' tool.sum
++cat testsuite/site.exp
++grep 'PASS: test_zardoz' testsuite/tool.sum
+ 
+-cat >> Makefile.am << 'END'
++cat >> testsuite/Makefile.am << 'END'
+ EXTRA_DEJAGNU_SITE_CONFIG += quux.exp
+ quux.exp:
+ 	echo 'set zardoz "/quux/"' > $@
+@@ -135,25 +142,25 @@ END
+ # Ensure that the Makefile will be newer than on site.exp, which will
+ # thus have to be remade.
+ $sleep
+-$AUTOMAKE Makefile
+-./config.status Makefile
+-grep 'zardoz.*/quux/' Makefile
++$AUTOMAKE testsuite/Makefile
++./config.status testsuite/Makefile
++grep 'zardoz.*/quux/' testsuite/Makefile
+ 
+-$MAKE site.exp
+-cat site.exp
+-cat quux.exp
+-grep 'zardoz.*/quux/' site.exp
++(cd testsuite/ && $MAKE site.exp)
++cat testsuite/site.exp
++cat testsuite/quux.exp
++grep 'zardoz.*/quux/' testsuite/site.exp
+ 
+ $MAKE check
+-grep 'PASS: test_zardoz' tool.sum
+-grep 'zardoz: /zardoz/' tool.log
+-grep 'zardoz.*quux' tool.log && exit 1
++grep 'PASS: test_zardoz' testsuite/tool.sum
++grep 'zardoz: /zardoz/' testsuite/tool.log
++grep 'zardoz.*quux' testsuite/tool.log && exit 1
+ 
+ # Check that files in $(EXTRA_DEJAGNU_SITE_CONFIG) are not distributed
+ # by default.
+ $MAKE distdir
+ ls -l $distdir
+-test ! -e $distdir/bar.dir/bar
+-test ! -e $distdir/quux.exp
++test ! -e $distdir/testsuite/bar.dir/bar
++test ! -e $distdir/testsuite/quux.exp
+ 
+ :
+diff --git a/t/dejagnu-siteexp-useredit.sh b/t/dejagnu-siteexp-useredit.sh
+index 835f8e8f7..f121ec926 100644
+--- a/t/dejagnu-siteexp-useredit.sh
++++ b/t/dejagnu-siteexp-useredit.sh
+@@ -20,18 +20,25 @@
+ . test-init.sh
+ 
+ cat >> configure.ac << 'END'
++AC_CONFIG_FILES([testsuite/Makefile])
+ AC_OUTPUT
+ END
+ 
+ cat > Makefile.am << 'END'
++SUBDIRS = testsuite
++END
++
++mkdir testsuite
++
++cat > testsuite/Makefile.am << 'END'
+ AUTOMAKE_OPTIONS = dejagnu
+ DEJATOOL = foo
+ END
+ 
+ # Deliberately select a variable defined automatically by
+ # the Makefile-generated site.exp.
+-mkdir foo.test
+-cat > foo.test/foo.exp << 'END'
++mkdir testsuite/foo.test
++cat > testsuite/foo.test/foo.exp << 'END'
+ send_user "objdir: $objdir\n"
+ set pipe "|"
+ if { $objdir == "${pipe}objdir${pipe}" } {
+@@ -47,21 +54,21 @@ $AUTOMAKE --add-missing
+ 
+ ./configure
+ 
+-$MAKE site.exp
+-echo 'set objdir "|objdir|"' >> site.exp
+-cat site.exp
++(cd testsuite/ && $MAKE site.exp)
++echo 'set objdir "|objdir|"' >> testsuite/site.exp
++cat testsuite/site.exp
+ $sleep
+-touch Makefile
+-$MAKE site.exp
+-cat site.exp
+-is_newest site.exp Makefile  # Sanity check.
+-grep '|objdir|' site.exp
+-test $($FGREP -c '|objdir|' site.exp) -eq 1
++touch testsuite/Makefile
++(cd testsuite/ && $MAKE site.exp)
++cat testsuite/site.exp
++is_newest testsuite/site.exp testsuite/Makefile  # Sanity check.
++grep '|objdir|' testsuite/site.exp
++test $($FGREP -c '|objdir|' testsuite/site.exp) -eq 1
+ 
+ # We can do a "more semantic" check if DejaGnu is available.
+ if runtest SOMEPROGRAM=someprogram --version; then
+   $MAKE check
+-  grep 'PASS: test_obj' foo.sum
++  grep 'PASS: test_obj' testsuite/foo.sum
+ fi
+ 
+ :
+diff --git a/t/dejagnu3.sh b/t/dejagnu3.sh
+index a215e2829..d93c42a26 100644
+--- a/t/dejagnu3.sh
++++ b/t/dejagnu3.sh
+@@ -27,19 +27,27 @@ END
+ chmod +x hammer
+ 
+ cat >> configure.ac << 'END'
++AC_CONFIG_FILES([testsuite/Makefile])
+ AC_OUTPUT
+ END
+ 
+ cat > Makefile.am << 'END'
++SUBDIRS = testsuite
++EXTRA_DIST = hammer
++END
++
++mkdir testsuite
++
++cat > testsuite/Makefile.am << 'END'
+ AUTOMAKE_OPTIONS = dejagnu
+ DEJATOOL = hammer
+-AM_RUNTESTFLAGS = HAMMER=$(srcdir)/hammer
+-EXTRA_DIST = hammer hammer.test/hammer.exp
++AM_RUNTESTFLAGS = HAMMER=$(top_srcdir)/hammer
++EXTRA_DIST = hammer.test/hammer.exp
+ END
+ 
+-mkdir hammer.test
++mkdir testsuite/hammer.test
+ 
+-cat > hammer.test/hammer.exp << 'END'
++cat > testsuite/hammer.test/hammer.exp << 'END'
+ set test test
+ spawn $HAMMER
+ expect {
+@@ -55,8 +63,8 @@ $AUTOMAKE --add-missing
+ ./configure
+ 
+ $MAKE check
+-test -f hammer.log
+-test -f hammer.sum
++test -f testsuite/hammer.log
++test -f testsuite/hammer.sum
+ 
+ $MAKE distcheck
+ 
+diff --git a/t/dejagnu4.sh b/t/dejagnu4.sh
+index ca2e6e89f..7306e9f8d 100644
+--- a/t/dejagnu4.sh
++++ b/t/dejagnu4.sh
+@@ -39,23 +39,31 @@ END
+ chmod +x spanner
+ 
+ cat >> configure.ac << 'END'
++AC_CONFIG_FILES([testsuite/Makefile])
+ AC_OUTPUT
+ END
+ 
+ cat > Makefile.am << 'END'
++SUBDIRS = testsuite
++EXTRA_DIST = hammer spanner
++END
++
++mkdir testsuite
++
++cat > testsuite/Makefile.am << 'END'
+ AUTOMAKE_OPTIONS = dejagnu
+ 
+ DEJATOOL = hammer spanner
+ 
+-AM_RUNTESTFLAGS = HAMMER=$(srcdir)/hammer SPANNER=$(srcdir)/spanner
++AM_RUNTESTFLAGS = HAMMER=$(top_srcdir)/hammer SPANNER=$(top_srcdir)/spanner
+ 
+-EXTRA_DIST  = hammer  hammer.test/hammer.exp
+-EXTRA_DIST += spanner spanner.test/spanner.exp
++EXTRA_DIST  = hammer.test/hammer.exp
++EXTRA_DIST += spanner.test/spanner.exp
+ END
+ 
+-mkdir hammer.test spanner.test
++mkdir testsuite/hammer.test testsuite/spanner.test
+ 
+-cat > hammer.test/hammer.exp << 'END'
++cat > testsuite/hammer.test/hammer.exp << 'END'
+ set test test
+ spawn $HAMMER
+ expect {
+@@ -64,7 +72,7 @@ expect {
+ }
+ END
+ 
+-cat > spanner.test/spanner.exp << 'END'
++cat > testsuite/spanner.test/spanner.exp << 'END'
+ set test test
+ spawn $SPANNER
+ expect {
+@@ -80,10 +88,10 @@ $AUTOMAKE --add-missing
+ ./configure
+ 
+ $MAKE check
+-test -f hammer.log
+-test -f hammer.sum
+-test -f spanner.log
+-test -f spanner.sum
++test -f testsuite/hammer.log
++test -f testsuite/hammer.sum
++test -f testsuite/spanner.log
++test -f testsuite/spanner.sum
+ 
+ $MAKE distcheck
+ 
+@@ -92,11 +100,12 @@ sed 's/E\(verything\)/Not e\1/' hammer > thammer
+ mv -f thammer hammer
+ chmod +x hammer
+ 
+-rm -f hammer.log hammer.sum spanner.log spanner.sum
++rm -f testsuite/hammer.log testsuite/hammer.sum
++rm -f testsuite/spanner.log testsuite/spanner.sum
+ $MAKE check && exit 1
+-test -f hammer.log
+-test -f hammer.sum
+-test -f spanner.log
+-test -f spanner.sum
++test -f testsuite/hammer.log
++test -f testsuite/hammer.sum
++test -f testsuite/spanner.log
++test -f testsuite/spanner.sum
+ 
+ :
+diff --git a/t/dejagnu5.sh b/t/dejagnu5.sh
+index b750d36cd..63f11afd8 100644
+--- a/t/dejagnu5.sh
++++ b/t/dejagnu5.sh
+@@ -29,17 +29,25 @@ END
+ chmod +x $package
+ 
+ cat >> configure.ac << 'END'
++AC_CONFIG_FILES([testsuite/Makefile])
+ AC_OUTPUT
+ END
+ 
+ cat > Makefile.am << END
++SUBDIRS = testsuite
++EXTRA_DIST = $package
++END
++
++mkdir testsuite
++
++cat > testsuite/Makefile.am << END
+ AUTOMAKE_OPTIONS = dejagnu
+-EXTRA_DIST = $package $package.test/$package.exp
+-AM_RUNTESTFLAGS = PACKAGE=\$(srcdir)/$package
++EXTRA_DIST = $package.test/$package.exp
++AM_RUNTESTFLAGS = PACKAGE=\$(top_srcdir)/$package
+ END
+ 
+-mkdir $package.test
+-cat > $package.test/$package.exp << 'END'
++mkdir testsuite/$package.test
++cat > testsuite/$package.test/$package.exp << 'END'
+ set test "a_dejagnu_test"
+ spawn $PACKAGE
+ expect {
+@@ -55,8 +63,8 @@ $AUTOMAKE --add-missing
+ ./configure
+ 
+ $MAKE check
+-test -f $package.log
+-test -f $package.sum
++test -f testsuite/$package.log
++test -f testsuite/$package.sum
+ 
+ $MAKE distcheck
+ 
+diff --git a/t/dejagnu6.sh b/t/dejagnu6.sh
+index 19ae23a81..95054ed78 100644
+--- a/t/dejagnu6.sh
++++ b/t/dejagnu6.sh
+@@ -26,17 +26,24 @@ END
+ chmod +x faildeja
+ 
+ cat >> configure.ac << 'END'
++AC_CONFIG_FILES([testsuite/Makefile])
+ AC_OUTPUT
+ END
+ 
+ cat > Makefile.am << 'END'
++SUBDIRS = testsuite
++END
++
++mkdir testsuite
++
++cat > testsuite/Makefile.am << 'END'
+ AUTOMAKE_OPTIONS = dejagnu
+ DEJATOOL = faildeja
+-AM_RUNTESTFLAGS = FAILDEJA=$(srcdir)/faildeja
++AM_RUNTESTFLAGS = FAILDEJA=$(top_srcdir)/faildeja
+ END
+ 
+-mkdir faildeja.test
+-cat > faildeja.test/faildeja.exp << 'END'
++mkdir testsuite/faildeja.test
++cat > testsuite/faildeja.test/faildeja.exp << 'END'
+ set test failing_deja_test
+ spawn $FAILDEJA
+ expect {
+@@ -51,8 +58,8 @@ $AUTOMAKE --add-missing
+ ./configure
+ 
+ $MAKE check && exit 1
+-test -f faildeja.log
+-test -f faildeja.sum
+-$FGREP 'FAIL: failing_deja_test' faildeja.sum
++test -f testsuite/faildeja.log
++test -f testsuite/faildeja.sum
++$FGREP 'FAIL: failing_deja_test' testsuite/faildeja.sum
+ 
+ :
+diff --git a/t/dejagnu7.sh b/t/dejagnu7.sh
+index 2bbce0e99..b57341e50 100644
+--- a/t/dejagnu7.sh
++++ b/t/dejagnu7.sh
+@@ -30,17 +30,24 @@ END
+ chmod +x failtcl
+ 
+ cat >> configure.ac << 'END'
++AC_CONFIG_FILES([testsuite/Makefile])
+ AC_OUTPUT
+ END
+ 
+ cat > Makefile.am << 'END'
++SUBDIRS = testsuite
++END
++
++mkdir testsuite
++
++cat > testsuite/Makefile.am << 'END'
+ AUTOMAKE_OPTIONS = dejagnu
+ DEJATOOL = failtcl
+-AM_RUNTESTFLAGS = --status FAILTCL=$(srcdir)/failtcl
++AM_RUNTESTFLAGS = --status FAILTCL=$(top_srcdir)/failtcl
+ END
+ 
+-mkdir failtcl.test
+-cat > failtcl.test/failtcl.exp << 'END'
++mkdir testsuite/failtcl.test
++cat > testsuite/failtcl.test/failtcl.exp << 'END'
+ set test test
+ spawn $FAILTCL
+ expect {
+@@ -55,8 +62,8 @@ $AUTOMAKE --add-missing
+ ./configure
+ 
+ $MAKE check && exit 1
+-test -f failtcl.log
+-test -f failtcl.sum
+-$FGREP 'missing close-brace' failtcl.sum
++test -f testsuite/failtcl.log
++test -f testsuite/failtcl.sum
++$FGREP 'missing close-brace' testsuite/failtcl.sum
+ 
+ :
+-- 
+2.40.1
+
